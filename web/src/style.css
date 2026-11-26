@@ -33,6 +33,16 @@ h1 { font-size: 20px; margin: 0 0 4px; }
 #reset { padding: 4px 10px; font: inherit; cursor: pointer; }
 #reset[hidden] { display: none; }
 
+.presets { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.presets button { padding: 3px 10px; font: inherit; cursor: pointer; border: 1px solid var(--line); background: none; color: inherit; border-radius: 4px; }
+.presets button[aria-pressed="true"] { background: var(--line); font-weight: 600; }
+#csv { padding: 4px 10px; font: inherit; cursor: pointer; }
+
+/* Cố định hai cột đầu (Section, Feature) khi cuộn ngang. */
+.table-wrap th:nth-child(1), .table-wrap td:nth-child(1) { position: sticky; left: 0; min-width: 170px; max-width: 170px; background: Canvas; z-index: 1; }
+.table-wrap th:nth-child(2), .table-wrap td:nth-child(2) { position: sticky; left: 170px; min-width: 260px; max-width: 260px; background: Canvas; z-index: 1; }
+.table-wrap thead th:nth-child(-n+2) { z-index: 4; }
+
 .legend { margin: 8px 0; color: var(--muted); }
 .legend summary { cursor: pointer; color: var(--fg); }
 .legend ul { margin: 6px 0 0 18px; padding: 0; }
@@ -46,7 +56,7 @@ td.empty { text-align: center; color: var(--muted); padding: 24px; }
 table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 thead th { position: sticky; top: 0; background: var(--fg-bg, Canvas); z-index: 2; }
-td.section { color: var(--muted); white-space: nowrap; }
+td.section { color: var(--muted); }
 td.feature { min-width: 260px; }
 td.co { background: var(--co); }
 td.khong { background: var(--khong); }
