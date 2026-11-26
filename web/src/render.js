@@ -118,6 +118,21 @@ export function renderTable(table, rows, editions, sort, onSort) {
       });
       featureCell.append(more);
     }
+    if (r.subitems.length) {
+      // Mục con của feature (các mục liệt kê trong ô tên trên trang Google), ẩn mặc định.
+      const subs = el('details', { class: 'more-links' });
+      const summary = el('summary');
+      summary.textContent = `Mục con (${r.subitems.length})`;
+      subs.append(summary);
+      const list = el('ul', { class: 'subitems' });
+      r.subitems.forEach((t) => {
+        const li = el('li');
+        li.textContent = t;
+        list.append(li);
+      });
+      subs.append(list);
+      featureCell.append(subs);
+    }
     const tr = el('tr', {}, [
       el('td', { class: 'section' }, [document.createTextNode(r.section)]),
       featureCell,
