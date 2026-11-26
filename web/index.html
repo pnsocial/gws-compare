@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ma trận so sánh tính năng theo edition của Google Workspace." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>GWS Compare: so sánh edition Google Workspace</title>
+  </head>
+  <body>
+    <header>
+      <h1>So sánh edition Google Workspace</h1>
+      <p class="disclaimer">
+        Trang này do cá nhân tổng hợp từ trang
+        <a href="https://knowledge.workspace.google.com/admin/getting-started/editions/compare-business-editions?hl=en" target="_blank" rel="noopener noreferrer">Compare editions</a>
+        của Google. Đây không phải trang chính thức của Google.
+      </p>
+      <p id="updated" class="updated" role="status"></p>
+    </header>
+
+    <section class="controls" aria-label="Bộ lọc">
+      <label>Family
+        <select id="family"></select>
+      </label>
+      <label>Section
+        <select id="section"></select>
+      </label>
+      <label class="grow">Từ khóa
+        <input id="q" type="search" placeholder="Tên feature hoặc section" autocomplete="off" />
+      </label>
+      <label class="check">
+        <input id="diff" type="checkbox" /> Chỉ hiện khác biệt giữa các edition đang chọn
+      </label>
+      <fieldset id="editions" class="editions">
+        <legend>Edition</legend>
+      </fieldset>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite">Đang tải...</p>
+
+    <div class="table-wrap">
+      <table id="matrix" aria-label="Ma trận tính năng theo edition"></table>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
