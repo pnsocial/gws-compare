@@ -19,7 +19,7 @@ const FAMILIES = [
     editions: ['Frontline Starter', 'Frontline Standard', 'Frontline Plus'] }
 ];
 
-const RAW_HEADER = ['family', 'section', 'group', 'feature', 'edition', 'value', 'source_key', 'url', 'links', 'notes'];
+const RAW_HEADER = ['family', 'section', 'group', 'feature', 'edition', 'value', 'source_key', 'url', 'links', 'notes', 'subitems'];
 
 const FIRESTORE_PROJECT = 'phienbangws';
 const FIRESTORE_DB = '(default)';
@@ -63,7 +63,8 @@ function crawl() {
         f.values.forEach(function (v) {
           seenEditions.add(v.edition);
           raw.push([family.id, f.section, f.group, f.feature, v.edition, v.value, f.key,
-            f.links.length ? f.links[0].url : '', JSON.stringify(f.links), JSON.stringify(v.notes)]);
+            f.links.length ? f.links[0].url : '', JSON.stringify(f.links), JSON.stringify(v.notes),
+            JSON.stringify(f.subitems)]);
         });
       });
       const missing = family.editions.filter(function (e) { return !seenEditions.has(e); });
@@ -159,8 +160,14 @@ function parsePage_(html, family) {
       seen.set(key, count);
       if (count > 1) key += ' #' + count;
 
+      const parts = first.html.split(/<(?:ul|ol)\b/i);
+      const subitems = Array.from(first.html.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi), function (m) {
+        return text_(m[1]);
+      }).filter(function (t) { return t; });
+
       features.push({
-        section: section, group: group, feature: first.text, key: key, links: links_(first.html),
+        section: section, group: group, feature: text_(parts[0]), subitems: subitems,
+        key: key, links: links_(first.html),
         values: head.map(function (edition, i) {
           return { edition: edition, value: values[i],
             notes: notesFor_(notes, [rawHead[i], group, first.text, values[i]]) };
@@ -274,6 +281,8 @@ function buildMatrix_(ss, raw) {
   const rows = new Map();
   const docs = new Map();
   const cells = new Map();
+  const names = new Map();
+  const subs = new Map();
 
   raw.forEach(function (r) {
     const section = r[1], group = r[2], feature = r[3], edition = r[4], value = r[5], key = String(r[6]);
@@ -284,8 +293,10 @@ function buildMatrix_(ss, raw) {
       added.push(m);
     }
     const id = String(m[1] || key);
+    if (!names.has(id)) names.set(id, group ? group + ': ' + feature : feature);
+    if (!subs.has(id) && r[10] && r[10] !== '[]') subs.set(id, JSON.parse(r[10]));
     if (!rows.has(id)) {
-      rows.set(id, [m[2], m[3]].concat(editions.map(function () { return 'N/A'; })));
+      rows.set(id, [m[2], names.get(id)].concat(editions.map(function () { return 'N/A'; })));
     }
     const row = rows.get(id);
     // Khi gộp nhiều family, lấy link của dòng đầu tiên có link (theo thứ tự FAMILIES)
@@ -311,7 +322,7 @@ function buildMatrix_(ss, raw) {
   const header = ['Section', 'Feature'].concat(editions, ['Docs URL']);
   const records = ids.map(function (id, i) {
     return { id: id, section: String(rows.get(id)[0]), feature: String(rows.get(id)[1]),
-      links: links[i], values: cells.get(id) };
+      links: links[i], subitems: subs.get(id) || [], values: cells.get(id) };
   });
   return { matrix: [header].concat(body), links: links, added: added, records: records };
 }
@@ -463,7 +474,7 @@ function buildSections_(records) {
       }) };
     });
     // Edition không có trong values nghĩa là N/A
-    doc.items.push({ id: shortId(r.id), feature: r.feature, links: r.links, values: values });
+    doc.items.push({ id: shortId(r.id), feature: r.feature, links: r.links, subitems: r.subitems, values: values });
   });
   return Array.from(bySection.values()).map(function (doc) {
     return { id: shortId(doc.title), doc: doc };
