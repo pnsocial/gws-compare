@@ -46,6 +46,35 @@ export function differs(row, editionNames) {
   return sigs.size > 1;
 }
 
+// Thứ tự khi sắp xếp cột edition: Có, Không, giá trị khác, N/A.
+function rank(v) {
+  if (v.startsWith('Có')) return 0;
+  if (v === 'Không') return 1;
+  if (v === 'N/A') return 3;
+  return 2;
+}
+
+/**
+ * sort: { key, dir } với key là 'section', 'feature' hoặc tên edition; dir là 'asc' | 'desc'.
+ * Sắp xếp ổn định: dòng bằng nhau giữ thứ tự gốc.
+ */
+export function sortRows(rows, sort) {
+  if (!sort) return rows;
+  const dir = sort.dir === 'desc' ? -1 : 1;
+  const text = sort.key === 'section' || sort.key === 'feature';
+  return [...rows].sort((a, b) => {
+    let c;
+    if (text) {
+      c = String(a[sort.key]).localeCompare(String(b[sort.key]), 'vi');
+    } else {
+      const ca = cellOf(a, sort.key).v;
+      const cb = cellOf(b, sort.key).v;
+      c = rank(ca) - rank(cb) || ca.localeCompare(cb, 'vi');
+    }
+    return c * dir;
+  });
+}
+
 /**
  * state: { section, q, diff }. editions: các edition đang hiển thị (đã lọc family và checkbox).
  */

@@ -1,6 +1,6 @@
 import './style.css';
 import { loadCatalog } from './cache.js';
-import { flatten, filterRows, sortSections } from './model.js';
+import { flatten, filterRows, sortRows, sortSections } from './model.js';
 import { renderTable } from './render.js';
 import { readUrl, writeUrl } from './url.js';
 
@@ -68,9 +68,19 @@ function apply() {
     setStatus('Chọn ít nhất một edition.');
     return;
   }
-  const filtered = filterRows(rows, state, visible);
-  renderTable($('matrix'), filtered, visible);
+  const filtered = sortRows(filterRows(rows, state, visible), state.sort);
+  renderTable($('matrix'), filtered, visible, state.sort, onSort);
   setStatus(`${filtered.length} / ${rows.length} feature`);
+}
+
+/** Bấm tiêu đề: cột mới sắp tăng dần, bấm lại cùng cột thì đổi chiều. */
+function onSort(key) {
+  if (state.sort && state.sort.key === key) {
+    state.sort = { key, dir: state.sort.dir === 'asc' ? 'desc' : 'asc' };
+  } else {
+    state.sort = { key, dir: 'asc' };
+  }
+  apply();
 }
 
 function bindEvents() {
