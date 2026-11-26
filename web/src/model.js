@@ -78,6 +78,24 @@ export function sortRows(rows, sort) {
 }
 
 /**
+ * Xuất CSV: Section, Feature, Link đầu tiên, rồi giá trị từng edition.
+ * Ô bắt đầu bằng = + - @ được thêm dấu ' để không bị Excel hiểu là công thức.
+ */
+export function toCsv(rows, editions) {
+  const esc = (v) => {
+    let s = String(v ?? '');
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [['Section', 'Feature', 'Link', ...editions.map((e) => e.name)].map(esc).join(',')];
+  for (const r of rows) {
+    const link = r.links.length ? r.links[0].url : '';
+    lines.push([r.section, r.feature, link, ...editions.map((e) => cellOf(r, e.name).v)].map(esc).join(','));
+  }
+  return lines.join('\r\n');
+}
+
+/**
  * state: { section, q, diff }. editions: các edition đang hiển thị (đã lọc family và checkbox).
  */
 export function filterRows(rows, state, editions) {

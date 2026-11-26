@@ -1,6 +1,8 @@
 import './style.css';
 import { loadCatalog } from './cache.js';
-import { flatten, filterRows, sortRows, sortSections } from './model.js';
+import { flatten, filterRows, sortRows, sortSections, toCsv } from './model.js';
+
+const FAMILY_LABELS = { business: 'Business', enterprise: 'Enterprise', essentials: 'Essentials', frontline: 'Frontline' };
 import { renderTable } from './render.js';
 import { readUrl, writeUrl } from './url.js';
 
@@ -72,6 +74,54 @@ function apply() {
   renderTable($('matrix'), filtered, visible, state.sort, onSort);
   setStatus(`${filtered.length} / ${rows.length} feature`);
   $('reset').hidden = !filtersActive();
+  updatePresets();
+}
+
+function buildPresets() {
+  const families = [...new Set(editions.map((e) => e.family))];
+  const make = (label, family) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.dataset.family = family;
+    b.addEventListener('click', () => selectPreset(family));
+    return b;
+  };
+  $('presets').replaceChildren(
+    make('Tất cả', ''),
+    ...families.map((f) => make(FAMILY_LABELS[f] || f, f))
+  );
+}
+
+/** Chọn đúng các edition của một family (hoặc tất cả nếu family rỗng). */
+function selectPreset(family) {
+  state.family = '';
+  state.editions = new Set(editions.filter((e) => !family || e.family === family).map((e) => e.name));
+  apply();
+}
+
+function updatePresets() {
+  document.querySelectorAll('#presets button').forEach((b) => {
+    const f = b.dataset.family;
+    const want = editions.filter((e) => !f || e.family === f).map((e) => e.name);
+    const on = want.length === state.editions.size && want.every((n) => state.editions.has(n));
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+/** Tải CSV đúng với kết quả đang hiển thị (lọc, sắp xếp, edition đang chọn). */
+function downloadCsv() {
+  const visible = visibleEditions();
+  const out = sortRows(filterRows(rows, state, visible), state.sort);
+  const blob = new Blob(['﻿' + toCsv(out, visible)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gws-compare-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function filtersActive() {
@@ -113,6 +163,7 @@ function bindEvents() {
     apply();
   });
   $('reset').addEventListener('click', resetFilters);
+  $('csv').addEventListener('click', downloadCsv);
   $('diff').addEventListener('change', (e) => {
     state.diff = e.target.checked;
     apply();
@@ -136,6 +187,7 @@ async function init() {
     const sections = sortSections(data.sections);
     rows = flatten(sections);
     buildControls(sections);
+    buildPresets();
     bindEvents();
     apply();
 
