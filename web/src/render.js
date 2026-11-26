@@ -21,23 +21,47 @@ function valueClass(v) {
   return 'text';
 }
 
-/** Tooltip chú thích: hover, focus, click để ghim, Escape để đóng. */
+// Các chú thích đang có trên bảng. Một bộ lắng nghe chung đóng chúng khi chạm/bấm ra ngoài.
+const tooltips = new Set();
+
+function closeOutside(target) {
+  for (const t of tooltips) {
+    if (t.pop.hidden) continue;
+    if (t.btn.contains(target) || t.pop.contains(target)) continue;
+    t.close();
+  }
+}
+
+document.addEventListener('pointerdown', (e) => closeOutside(e.target));
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  for (const t of tooltips) t.close();
+});
+
+/**
+ * Tooltip chú thích.
+ * - Chuột: rê vào thì hiện, rời ra thì ẩn (trừ khi đã ghim bằng click).
+ * - Chạm hoặc click: bật/tắt và ghim. Chạm/bấm ra ngoài hoặc Escape thì đóng.
+ * Hover chỉ áp dụng cho chuột để chạm trên điện thoại không bị hiện lại sau khi đóng.
+ */
 function attachTooltip(btn, pop) {
   let pinned = false;
   const show = () => { pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
   const hide = () => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  const close = () => { pinned = false; hide(); };
 
-  btn.addEventListener('mouseenter', show);
-  btn.addEventListener('mouseleave', () => { if (!pinned) hide(); });
-  btn.addEventListener('focus', show);
-  btn.addEventListener('blur', () => { if (!pinned) hide(); });
+  btn.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'mouse' && !pinned) show();
+  });
+  btn.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'mouse' && !pinned) hide();
+  });
   btn.addEventListener('click', () => {
     pinned = !pinned;
     if (pinned) show(); else hide();
   });
-  btn.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { pinned = false; hide(); }
-  });
+
+  tooltips.add({ btn, pop, close });
 }
 
 function valueCell(cell, edition) {
@@ -82,6 +106,7 @@ function sortableHeader(label, key, sort, onSort) {
  * sort: { key, dir } hoặc null. onSort(key): gọi khi người dùng bấm tiêu đề.
  */
 export function renderTable(table, rows, editions, sort, onSort) {
+  tooltips.clear(); // các ô cũ bị thay thế, không còn cần theo dõi
   const head = el('tr', {}, [
     sortableHeader('Section', 'section', sort, onSort),
     sortableHeader('Feature', 'feature', sort, onSort),
