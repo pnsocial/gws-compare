@@ -49,8 +49,10 @@ h1 { font-size: 20px; margin: 0 0 4px; }
 .legend li { margin: 2px 0; }
 
 td.empty { text-align: center; color: var(--muted); padding: 24px; }
-.more-links { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
-.more-links a { margin-right: 8px; }
+.more-links { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.more-links summary { cursor: pointer; width: max-content; }
+.more-links[open] summary { margin-bottom: 4px; }
+.more-links a { display: block; margin: 2px 0; }
 
 .table-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--line); }
 table { border-collapse: collapse; width: 100%; }
