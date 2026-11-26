@@ -38,11 +38,6 @@ h1 { font-size: 20px; margin: 0 0 4px; }
 .presets button[aria-pressed="true"] { background: var(--line); font-weight: 600; }
 #csv { padding: 4px 10px; font: inherit; cursor: pointer; }
 
-/* Cố định hai cột đầu (Section, Feature) khi cuộn ngang. */
-.table-wrap th:nth-child(1), .table-wrap td:nth-child(1) { position: sticky; left: 0; min-width: 170px; max-width: 170px; background: Canvas; z-index: 1; }
-.table-wrap th:nth-child(2), .table-wrap td:nth-child(2) { position: sticky; left: 170px; min-width: 260px; max-width: 260px; background: Canvas; z-index: 1; }
-.table-wrap thead th:nth-child(-n+2) { z-index: 4; }
-
 .legend { margin: 8px 0; color: var(--muted); }
 .legend summary { cursor: pointer; color: var(--fg); }
 .legend ul { margin: 6px 0 0 18px; padding: 0; }
