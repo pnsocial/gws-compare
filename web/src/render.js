@@ -106,8 +106,11 @@ export function renderTable(table, rows, editions, sort, onSort) {
       featureCell.textContent = r.feature;
     }
     if (others.length) {
-      const more = el('span', { class: 'more-links' });
-      more.append(document.createTextNode('Thêm: '));
+      // Link phụ ẩn sau nút mở rộng, không hiện mặc định để bảng khỏi rối.
+      const more = el('details', { class: 'more-links' });
+      const summary = el('summary');
+      summary.textContent = `+${others.length} liên kết khác`;
+      more.append(summary);
       others.forEach((l) => {
         const a = el('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer' });
         a.textContent = l.text;
