@@ -71,6 +71,22 @@ function apply() {
   const filtered = sortRows(filterRows(rows, state, visible), state.sort);
   renderTable($('matrix'), filtered, visible, state.sort, onSort);
   setStatus(`${filtered.length} / ${rows.length} feature`);
+  $('reset').hidden = !filtersActive();
+}
+
+function filtersActive() {
+  return !!(state.family || state.section || state.q.trim() || state.diff ||
+    state.editions.size !== editions.length);
+}
+
+/** Xóa mọi bộ lọc, giữ nguyên thứ tự sắp xếp. */
+function resetFilters() {
+  state.family = '';
+  state.section = '';
+  state.q = '';
+  state.diff = false;
+  state.editions = new Set(editions.map((e) => e.name));
+  apply();
 }
 
 /** Bấm tiêu đề: cột mới sắp tăng dần, bấm lại cùng cột thì đổi chiều. */
@@ -96,6 +112,7 @@ function bindEvents() {
     state.q = e.target.value;
     apply();
   });
+  $('reset').addEventListener('click', resetFilters);
   $('diff').addEventListener('change', (e) => {
     state.diff = e.target.checked;
     apply();
