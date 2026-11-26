@@ -87,3 +87,6 @@ td { position: relative; }
 .tip[hidden] { display: none; }
 
 footer { margin-top: 12px; color: var(--muted); }
+
+.subitems { margin: 4px 0 0 16px; padding: 0; font-size: 12px; color: var(--muted); }
+.subitems li { margin: 2px 0; }

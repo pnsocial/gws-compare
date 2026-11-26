@@ -19,6 +19,7 @@ export function flatten(sections) {
         links: (item.links || [])
           .map((l) => ({ text: String(l.text || l.url || ''), url: safeUrl(l.url) }))
           .filter((l) => l.url),
+        subitems: (item.subitems || []).map((t) => String(t)),
         notes: s.notes || {},
         values: item.values || {}
       });
