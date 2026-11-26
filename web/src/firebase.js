@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore/lite';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
 // Cấu hình web lấy từ .env.local (không commit). Xem .env.example.
 const config = {
@@ -11,5 +12,16 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// TODO: App Check (reCAPTCHA Enterprise) làm sau, theo kế hoạch.
-export const db = getFirestore(initializeApp(config));
+const app = initializeApp(config);
+
+// App Check (reCAPTCHA Enterprise). Site key là khóa công khai, nằm trong bundle là bình thường.
+// Đang ở chế độ monitor: Firestore chưa enforce, nên thiếu token không chặn đọc.
+const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+if (siteKey) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(siteKey),
+    isTokenAutoRefreshEnabled: true
+  });
+}
+
+export const db = getFirestore(app);
