@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Dữ liệu so sánh: public chỉ đọc, không ai ghi từ client.
+    match /catalog/{path=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Lịch sử thay đổi: chặn hoàn toàn từ client.
+    match /changes/{id} {
+      allow read, write: if false;
+    }
+
+    // Mọi đường dẫn khác: chặn.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
