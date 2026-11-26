@@ -66,12 +66,26 @@ function valueCell(cell, edition) {
   return td;
 }
 
-/** Vẽ bảng. rows: dòng đã lọc. editions: [{name, family}] đang hiển thị. */
-export function renderTable(table, rows, editions) {
+/** Tiêu đề cột có thể bấm để sắp xếp. aria-sort cho trình đọc màn hình biết chiều hiện tại. */
+function sortableHeader(label, key, sort, onSort) {
+  const active = sort && sort.key === key;
+  const th = el('th', { scope: 'col', 'aria-sort': active ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none' });
+  const btn = el('button', { type: 'button', class: 'sort-btn', 'data-key': key });
+  btn.textContent = label;
+  btn.addEventListener('click', () => onSort(key));
+  th.append(btn);
+  return th;
+}
+
+/**
+ * Vẽ bảng. rows: dòng đã lọc và sắp xếp. editions: [{name, family}] đang hiển thị.
+ * sort: { key, dir } hoặc null. onSort(key): gọi khi người dùng bấm tiêu đề.
+ */
+export function renderTable(table, rows, editions, sort, onSort) {
   const head = el('tr', {}, [
-    el('th', { scope: 'col' }, [document.createTextNode('Section')]),
-    el('th', { scope: 'col' }, [document.createTextNode('Feature')]),
-    ...editions.map((e) => el('th', { scope: 'col' }, [document.createTextNode(e.name)]))
+    sortableHeader('Section', 'section', sort, onSort),
+    sortableHeader('Feature', 'feature', sort, onSort),
+    ...editions.map((e) => sortableHeader(e.name, e.name, sort, onSort))
   ]);
   const body = el('tbody');
 

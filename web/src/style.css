@@ -1,7 +1,7 @@
 :root {
-  --co: #d9ead3;
-  --khong: #f4cccc;
-  --na: #eeeeee;
+  --co: #e4f1e0;
+  --khong: #f9e0e0;
+  --na: #f1f1f1;
   --line: #d0d0d0;
   --fg: #1f1f1f;
   --muted: #5f6368;
@@ -39,6 +39,14 @@ td.feature { min-width: 260px; }
 td.co { background: var(--co); }
 td.khong { background: var(--khong); }
 td.na { background: var(--na); color: var(--muted); }
+
+.sort-btn {
+  border: 0; background: none; color: inherit; font: inherit; font-weight: 600;
+  padding: 0; cursor: pointer; text-align: left;
+}
+.sort-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+th[aria-sort="ascending"] .sort-btn::after { content: " ▲"; font-size: 10px; }
+th[aria-sort="descending"] .sort-btn::after { content: " ▼"; font-size: 10px; }
 
 .note-btn {
   border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
