@@ -89,14 +89,31 @@ export function renderTable(table, rows, editions, sort, onSort) {
   ]);
   const body = el('tbody');
 
+  if (!rows.length) {
+    const td = el('td', { class: 'empty', colspan: String(editions.length + 2) });
+    td.textContent = 'Không có feature nào khớp bộ lọc.';
+    body.append(el('tr', {}, [td]));
+  }
+
   for (const r of rows) {
     const featureCell = el('td', { class: 'feature' });
-    if (r.link) {
-      const a = el('a', { href: r.link, target: '_blank', rel: 'noopener noreferrer' });
+    const [first, ...others] = r.links;
+    if (first) {
+      const a = el('a', { href: first.url, target: '_blank', rel: 'noopener noreferrer' });
       a.textContent = r.feature;
       featureCell.append(a);
     } else {
       featureCell.textContent = r.feature;
+    }
+    if (others.length) {
+      const more = el('span', { class: 'more-links' });
+      more.append(document.createTextNode('Thêm: '));
+      others.forEach((l) => {
+        const a = el('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer' });
+        a.textContent = l.text;
+        more.append(a);
+      });
+      featureCell.append(more);
     }
     const tr = el('tr', {}, [
       el('td', { class: 'section' }, [document.createTextNode(r.section)]),

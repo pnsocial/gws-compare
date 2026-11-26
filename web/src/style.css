@@ -28,7 +28,19 @@ h1 { font-size: 20px; margin: 0 0 4px; }
 .editions label { display: inline-flex; align-items: center; gap: 4px; flex-direction: row; }
 .editions input:disabled + span, .editions label:has(input:disabled) { opacity: 0.4; }
 
-.status { color: var(--muted); margin: 8px 0; }
+.status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0; }
+.status { color: var(--muted); margin: 0; }
+#reset { padding: 4px 10px; font: inherit; cursor: pointer; }
+#reset[hidden] { display: none; }
+
+.legend { margin: 8px 0; color: var(--muted); }
+.legend summary { cursor: pointer; color: var(--fg); }
+.legend ul { margin: 6px 0 0 18px; padding: 0; }
+.legend li { margin: 2px 0; }
+
+td.empty { text-align: center; color: var(--muted); padding: 24px; }
+.more-links { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.more-links a { margin-right: 8px; }
 
 .table-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--line); }
 table { border-collapse: collapse; width: 100%; }

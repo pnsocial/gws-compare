@@ -36,7 +36,21 @@
       </fieldset>
     </section>
 
-    <p id="status" class="status" role="status" aria-live="polite">Đang tải...</p>
+    <div class="status-row">
+      <p id="status" class="status" role="status" aria-live="polite">Đang tải...</p>
+      <button id="reset" type="button" hidden>Xóa bộ lọc</button>
+    </div>
+
+    <details class="legend">
+      <summary>Chú giải ký hiệu</summary>
+      <ul>
+        <li><strong>Có</strong>: edition được hỗ trợ.</li>
+        <li><strong>Có*</strong>, <strong>Có**</strong>, <strong>Có***</strong>: được hỗ trợ có điều kiện. Ký hiệu được đánh riêng cho từng feature. Bấm vào ký hiệu để xem chú thích.</li>
+        <li><strong>Không</strong>: edition không hỗ trợ.</li>
+        <li><strong>N/A</strong>: trang của Google không liệt kê feature này cho edition đó. Khác với "Không".</li>
+        <li><strong>Số hoặc Unlimited</strong>: giới hạn cụ thể của feature.</li>
+      </ul>
+    </details>
 
     <div class="table-wrap">
       <table id="matrix" aria-label="Ma trận tính năng theo edition"></table>
