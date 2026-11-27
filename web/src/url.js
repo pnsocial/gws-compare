@@ -44,9 +44,6 @@ export function writeUrl(state, allEditionNames, defaultNames = allEditionNames)
   if (!sameSet(state.editions, defaultNames)) {
     p.set('e', allEditionNames.filter((n) => state.editions.has(n)).join(','));
   }
-  // Giữ tham số chế độ thử nghiệm (?demo=...) nếu có.
-  const demo = new URLSearchParams(location.search).get('demo');
-  if (demo) p.set('demo', demo);
   const qs = p.toString();
   history.replaceState(null, '', qs ? '?' + qs : location.pathname);
 }
