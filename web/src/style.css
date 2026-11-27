@@ -94,6 +94,8 @@ td.feature { min-width: 260px; }
 td.co { background: var(--co); }
 td.khong { background: var(--khong); }
 td.na { background: var(--na); color: var(--muted); }
+/* Ô N/A theo trang tính năng: chỉ tô đậm chữ. */
+td.na-page { font-weight: 700; color: var(--fg); }
 
 .sort-btn {
   border: 0; background: none; color: inherit; font: inherit; font-weight: 600;

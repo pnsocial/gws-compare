@@ -20,6 +20,7 @@ export function flatten(sections) {
           .map((l) => ({ text: String(l.text || l.url || ''), url: safeUrl(l.url) }))
           .filter((l) => l.url),
         subitems: (item.subitems || []).map((t) => String(t)),
+        pageEditions: Array.isArray(item.pageEditions) ? item.pageEditions.map(String) : [],
         notes: s.notes || {},
         values: item.values || {}
       });
@@ -31,7 +32,12 @@ export function flatten(sections) {
 /** Ô của một edition. Edition không có trong values nghĩa là N/A. */
 export function cellOf(row, edition) {
   const cell = row.values[edition];
-  if (!cell) return { v: 'N/A', notes: [] };
+  // Ô N/A nhưng trang tính năng ghi edition này được hỗ trợ: thêm ghi chú †.
+  if (!cell) {
+    const notes = (row.pageEditions || []).includes(edition)
+      ? [{ mark: '†', text: 'Theo trang tính năng: Có' }] : [];
+    return { v: 'N/A', notes };
+  }
   return {
     v: String(cell.v ?? ''),
     notes: (cell.n || []).map((id) => row.notes[id]).filter(Boolean)
