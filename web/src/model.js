@@ -1,3 +1,17 @@
+/** Tên hiển thị của từng family, kể cả nhóm mở rộng. */
+export const FAMILY_LABELS = {
+  business: 'Business', enterprise: 'Enterprise', essentials: 'Essentials', frontline: 'Frontline',
+  cloudidentity: 'Cloud Identity', aiexpanded: 'AI Expanded Access'
+};
+
+/** Các family thuộc Google Workspace. Family khác (ví dụ Cloud Identity) là nhóm mở rộng. */
+export const WORKSPACE_FAMILIES = ['business', 'enterprise', 'essentials', 'frontline'];
+
+/** Nhóm của một family: 'workspace' hoặc chính tên family mở rộng. */
+export function groupOf(family) {
+  return family && !WORKSPACE_FAMILIES.includes(family) ? family : 'workspace';
+}
+
 /** Chỉ cho http(s), theo quy tắc của CLAUDE.md. */
 export function safeUrl(url) {
   return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : '';
@@ -15,6 +29,7 @@ export function flatten(sections) {
     for (const item of s.items || []) {
       rows.push({
         section: s.title || '',
+        family: s.family || '',
         feature: item.feature || '',
         links: (item.links || [])
           .map((l) => ({ text: String(l.text || l.url || ''), url: safeUrl(l.url) }))
@@ -108,7 +123,10 @@ export function toCsv(rows, editions) {
 export function filterRows(rows, state, editions) {
   const q = state.q.trim().toLowerCase();
   const names = editions.map((e) => e.name);
+  const groups = new Set(editions.map((e) => groupOf(e.family)));
   return rows.filter((r) => {
+    // Dòng thuộc nhóm không có edition nào đang chọn thì ẩn (ví dụ dòng Workspace khi chỉ chọn Cloud Identity).
+    if (!groups.has(groupOf(r.family))) return false;
     if (state.section && r.section !== state.section) return false;
     if (q && !r.feature.toLowerCase().includes(q) && !r.section.toLowerCase().includes(q)) return false;
     if (state.diff && !differs(r, names)) return false;

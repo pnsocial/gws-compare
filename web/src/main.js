@@ -1,10 +1,9 @@
 import './style.css';
 import { loadCatalog } from './cache.js';
-import { flatten, filterRows, sortRows, sortSections, toCsv } from './model.js';
-
-const FAMILY_LABELS = { business: 'Business', enterprise: 'Enterprise', essentials: 'Essentials', frontline: 'Frontline' };
+import { flatten, filterRows, sortRows, sortSections, toCsv, FAMILY_LABELS, groupOf } from './model.js';
 import { renderTable } from './render.js';
 import { readUrl, writeUrl } from './url.js';
+import { demoExtras, DEMO_PRESETS } from './extras-demo.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtDate = (d) => (d
@@ -12,16 +11,23 @@ const fmtDate = (d) => (d
   : 'chưa rõ');
 
 let editions = [];
+let defaultNames = [];
 let rows = [];
 let state = null;
 
+const isExtra = (e) => groupOf(e.family) !== 'workspace';
+
 function setStatus(msg) { $('status').textContent = msg; }
+
+function sameSet(set, arr) {
+  return set.size === arr.length && arr.every((n) => set.has(n));
+}
 
 function buildControls(sections) {
   const families = [...new Set(editions.map((e) => e.family))];
   $('family').replaceChildren(
     new Option('Tất cả', ''),
-    ...families.map((f) => new Option(f, f))
+    ...families.map((f) => new Option(FAMILY_LABELS[f] || f, f))
   );
 
   $('section').replaceChildren(
@@ -30,7 +36,9 @@ function buildControls(sections) {
   );
 
   const box = $('editions');
+  const extraBox = $('extra-editions');
   box.querySelectorAll('label').forEach((l) => l.remove());
+  extraBox.replaceChildren();
   for (const e of editions) {
     const input = document.createElement('input');
     input.type = 'checkbox';
@@ -38,9 +46,10 @@ function buildControls(sections) {
     input.dataset.family = e.family;
     input.checked = state.editions.has(e.name);
     const label = document.createElement('label');
-    label.append(input, document.createTextNode(' ' + e.name));
-    box.append(label);
+    label.append(input, document.createTextNode(' ' + (e.label || e.name)));
+    (isExtra(e) ? extraBox : box).append(label);
   }
+  $('extras').hidden = !editions.some(isExtra);
 }
 
 function syncFormFromState() {
@@ -48,7 +57,7 @@ function syncFormFromState() {
   $('section').value = state.section;
   $('q').value = state.q;
   $('diff').checked = state.diff;
-  document.querySelectorAll('#editions input').forEach((input) => {
+  document.querySelectorAll('#editions input, #extra-editions input').forEach((input) => {
     input.checked = state.editions.has(input.value);
     input.disabled = !!state.family && input.dataset.family !== state.family;
   });
@@ -62,7 +71,7 @@ function visibleEditions() {
 function apply() {
   const names = editions.map((e) => e.name);
   const visible = visibleEditions();
-  writeUrl(state, names);
+  writeUrl(state, names, defaultNames);
   syncFormFromState();
 
   if (!visible.length) {
@@ -72,13 +81,15 @@ function apply() {
   }
   const filtered = sortRows(filterRows(rows, state, visible), state.sort);
   renderTable($('matrix'), filtered, visible, state.sort, onSort);
-  setStatus(`${filtered.length} / ${rows.length} feature`);
+  // Tổng chỉ đếm feature thuộc nhóm đang chọn (Workspace hoặc nhóm mở rộng).
+  const groups = new Set(editions.filter((e) => state.editions.has(e.name)).map((e) => groupOf(e.family)));
+  const total = rows.filter((r) => groups.has(groupOf(r.family))).length;
+  setStatus(`${filtered.length} / ${total} feature`);
   $('reset').hidden = !filtersActive();
   updatePresets();
 }
 
 function buildPresets() {
-  const families = [...new Set(editions.map((e) => e.family))];
   const make = (label, family) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -87,25 +98,34 @@ function buildPresets() {
     b.addEventListener('click', () => selectPreset(family));
     return b;
   };
+  // "Tất cả" chỉ áp cho Google Workspace; nhóm mở rộng có nút riêng.
+  const workspaceFamilies = [...new Set(editions.filter((e) => !isExtra(e)).map((e) => e.family))];
+  const extraFamilies = [...new Set(editions.filter(isExtra).map((e) => e.family))];
   $('presets').replaceChildren(
     make('Tất cả', ''),
-    ...families.map((f) => make(FAMILY_LABELS[f] || f, f))
+    ...workspaceFamilies.map((f) => make(FAMILY_LABELS[f] || f, f))
+  );
+  $('extra-presets').replaceChildren(
+    ...extraFamilies.map((f) => make(FAMILY_LABELS[f] || f, f))
   );
 }
 
-/** Chọn đúng các edition của một family (hoặc tất cả nếu family rỗng). */
+/** Các edition của một nút nhanh. family rỗng = toàn bộ edition Google Workspace. */
+function presetNames(family) {
+  if (!family) return defaultNames;
+  if (DEMO_PRESETS[family]) return DEMO_PRESETS[family];
+  return editions.filter((e) => e.family === family).map((e) => e.name);
+}
+
 function selectPreset(family) {
   state.family = '';
-  state.editions = new Set(editions.filter((e) => !family || e.family === family).map((e) => e.name));
+  state.editions = new Set(presetNames(family));
   apply();
 }
 
 function updatePresets() {
-  document.querySelectorAll('#presets button').forEach((b) => {
-    const f = b.dataset.family;
-    const want = editions.filter((e) => !f || e.family === f).map((e) => e.name);
-    const on = want.length === state.editions.size && want.every((n) => state.editions.has(n));
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  document.querySelectorAll('#presets button, #extra-presets button').forEach((b) => {
+    b.setAttribute('aria-pressed', sameSet(state.editions, presetNames(b.dataset.family)) ? 'true' : 'false');
   });
 }
 
@@ -126,7 +146,7 @@ function downloadCsv() {
 
 function filtersActive() {
   return !!(state.family || state.section || state.q.trim() || state.diff ||
-    state.editions.size !== editions.length);
+    !sameSet(state.editions, defaultNames));
 }
 
 /** Xóa mọi bộ lọc, giữ nguyên thứ tự sắp xếp. */
@@ -135,7 +155,7 @@ function resetFilters() {
   state.section = '';
   state.q = '';
   state.diff = false;
-  state.editions = new Set(editions.map((e) => e.name));
+  state.editions = new Set(defaultNames);
   apply();
 }
 
@@ -146,6 +166,13 @@ function onSort(key) {
   } else {
     state.sort = { key, dir: 'asc' };
   }
+  apply();
+}
+
+function onEditionChange(e) {
+  if (!e.target.matches('input')) return;
+  if (e.target.checked) state.editions.add(e.target.value);
+  else state.editions.delete(e.target.value);
   apply();
 }
 
@@ -168,12 +195,8 @@ function bindEvents() {
     state.diff = e.target.checked;
     apply();
   });
-  $('editions').addEventListener('change', (e) => {
-    if (!e.target.matches('input')) return;
-    if (e.target.checked) state.editions.add(e.target.value);
-    else state.editions.delete(e.target.value);
-    apply();
-  });
+  $('editions').addEventListener('change', onEditionChange);
+  $('extra-editions').addEventListener('change', onEditionChange);
 }
 
 /**
@@ -198,10 +221,18 @@ async function init() {
   try {
     const data = await loadCatalog();
     editions = data.editions;
+    let allSections = data.sections;
+    // Chỉ khi mở ?demo=extras: thêm dữ liệu giả để xem giao diện nhóm mở rộng.
+    if (new URLSearchParams(location.search).get('demo') === 'extras') {
+      const demo = demoExtras();
+      editions = editions.concat(demo.editions);
+      allSections = allSections.concat(demo.sections);
+    }
     const names = editions.map((e) => e.name);
-    state = readUrl(names);
+    defaultNames = editions.filter((e) => !isExtra(e)).map((e) => e.name);
+    state = readUrl(names, defaultNames);
 
-    const sections = sortSections(data.sections);
+    const sections = sortSections(allSections);
     rows = flatten(sections);
     buildControls(sections);
     buildPresets();
