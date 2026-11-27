@@ -17,8 +17,12 @@
       <p id="updated" class="updated" role="status"></p>
     </header>
 
-    <section class="controls" aria-label="Bộ lọc">
-      <h2 class="panel-title">Bộ lọc</h2>
+    <section class="controls" id="filters" aria-label="Bộ lọc">
+      <div class="panel-head">
+        <h2 class="panel-title">Bộ lọc</h2>
+        <button id="toggle-filters" class="btn btn-small" type="button" aria-expanded="true" aria-controls="filter-body">Thu gọn</button>
+      </div>
+      <div id="filter-body" class="filter-body">
       <label>Family
         <select id="family"></select>
       </label>
@@ -35,6 +39,7 @@
         <legend>Edition</legend>
         <div id="presets" class="presets" role="group" aria-label="Chọn nhanh edition"></div>
       </fieldset>
+      </div>
     </section>
 
     <div class="status-row">

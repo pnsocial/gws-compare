@@ -33,7 +33,11 @@ h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
   margin-bottom: 8px; padding: 12px; background: var(--panel);
   border: 1px solid var(--line); border-radius: 8px;
 }
-.panel-title { width: 100%; margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.panel-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panel-title { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.filter-body { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; width: 100%; }
+.filter-body[hidden] { display: none; }
+.btn-small { padding: 3px 10px; font-size: 13px; }
 .controls label { display: flex; flex-direction: column; gap: 4px; }
 .controls label.check { flex-direction: row; align-items: center; gap: 6px; }
 .controls label.grow { flex: 1 1 220px; }

@@ -176,6 +176,23 @@ function bindEvents() {
   });
 }
 
+/**
+ * Nút thu gọn/mở rộng khối bộ lọc. Trên màn hình hẹp (điện thoại) mặc định thu gọn
+ * để bảng hiện nhiều hơn. Trạng thái không lưu lên URL.
+ */
+function setupFilterToggle() {
+  const btn = $('toggle-filters');
+  const body = $('filter-body');
+  const narrow = window.matchMedia('(max-width: 600px)').matches;
+  const setOpen = (open) => {
+    body.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.textContent = open ? 'Thu gọn' : 'Mở bộ lọc';
+  };
+  setOpen(!narrow);
+  btn.addEventListener('click', () => setOpen(body.hidden));
+}
+
 async function init() {
   setStatus('Đang tải dữ liệu...');
   try {
@@ -188,6 +205,7 @@ async function init() {
     rows = flatten(sections);
     buildControls(sections);
     buildPresets();
+    setupFilterToggle();
     bindEvents();
     apply();
 
