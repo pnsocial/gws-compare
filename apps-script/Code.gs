@@ -402,6 +402,97 @@ function parseCloudIdentity_(html) {
   return { editions: editions || [], sections: sections, featureCount: featureCount, valueSummary: valueSummary };
 }
 
+/* ---------- AI Expanded Access: crawl riêng, không trộn với Workspace ---------- */
+
+const AE_URL = 'https://knowledge.workspace.google.com/admin/generative-ai/workspace-with-gemini/ai-expanded-access';
+const AE_DOC_PATH = 'extras/aiexpanded';
+const AE_MIN_FEATURES = 15; // ngưỡng phát hiện trang đổi cấu trúc (hiện có 21)
+
+/** Crawl bảng AI Expanded Access và ghi vào extras/aiexpanded. Chạy thủ công. */
+function crawlAiExpandedAccess() {
+  withLock_(function () {
+    const res = UrlFetchApp.fetch(AE_URL, { headers: { 'Accept-Language': 'en' }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error('AI Expanded Access: HTTP ' + res.getResponseCode());
+    const parsed = parseAiExpanded_(res.getContentText('UTF-8'));
+    if (parsed.featureCount < AE_MIN_FEATURES) {
+      throw new Error('AI Expanded Access: chỉ có ' + parsed.featureCount + ' feature');
+    }
+    const root = 'projects/' + FIRESTORE_PROJECT + '/databases/' + FIRESTORE_DB + '/documents';
+    const doc = {
+      schemaVersion: SCHEMA_VERSION,
+      source: AE_URL,
+      checkedAt: new Date(),
+      editions: parsed.editions,
+      featureCount: parsed.featureCount,
+      sections: parsed.sections
+    };
+    fsRequest_(root + ':commit', { writes: [{ update: { name: root + '/' + AE_DOC_PATH, fields: fields_(doc) } }] });
+    return 'AI Expanded Access: ' + parsed.sections.length + ' section, ' + parsed.featureCount +
+      ' feature, cột ' + parsed.editions.join(' / ');
+  });
+}
+
+/**
+ * Các ô của một hàng. Hàng chỉ có một ô (tên section) giữ nguyên một ô;
+ * ô gộp cột trong hàng feature (colspan) được lặp lại đủ số cột.
+ */
+function aeCells_(rowHtml) {
+  const cells = Array.from(rowHtml.matchAll(/<t[hd]\b([^>]*)>([\s\S]*?)<\/t[hd]>/gi));
+  if (cells.length === 1) return [text_(cells[0][2])];
+  const out = [];
+  cells.forEach(function (c) {
+    const span = /colspan\s*=\s*["']?(\d+)/i.exec(c[1]);
+    const text = text_(c[2]);
+    for (let k = 0; k < (span ? Number(span[1]) : 1); k++) out.push(text);
+  });
+  return out;
+}
+
+/**
+ * Đọc bảng so sánh AI Expanded Access. Hàng chỉ có một ô là tên section; các hàng còn lại là feature.
+ * Giá trị giữ nguyên chữ của trang (ví dụ "No access", "30 per month").
+ */
+function parseAiExpanded_(html) {
+  const tableRe = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
+  let m;
+  let rows = null;
+  while ((m = tableRe.exec(html)) !== null) {
+    const r = Array.from(m[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), function (x) { return aeCells_(x[1]); });
+    if (r.length && r[0].length === 4 && r[0][0] === '' ) { rows = r; break; }
+  }
+  if (!rows) throw new Error('AI Expanded Access: không tìm thấy bảng so sánh');
+
+  const editions = rows[0].slice(1);
+  const sections = [];
+  let current = null;
+  rows.slice(1).forEach(function (cells) {
+    if (cells.length === 1) {
+      if (!cells[0]) return;
+      current = { title: cells[0], items: [] };
+      sections.push(current);
+      return;
+    }
+    if (cells.length !== editions.length + 1) throw new Error('AI Expanded Access: dòng sai cấu trúc "' + cells[0] + '"');
+    if (!current) { current = { title: 'Khác', items: [] }; sections.push(current); }
+    const values = {};
+    editions.forEach(function (ed, i) { values[ed] = { v: cells[i + 1], n: [] }; });
+    current.items.push({ feature: cells[0], values: values });
+  });
+  const featureCount = sections.reduce(function (n, s) { return n + s.items.length; }, 0);
+  return { editions: editions, sections: sections, featureCount: featureCount };
+}
+
+/**
+ * Bật lịch crawl Cloud Identity hằng ngày lúc 7 giờ (sau crawl Workspace lúc 6 giờ).
+ * Chỉ thay lịch của crawlCloudIdentity, không đụng lịch crawl Workspace.
+ */
+function createCloudIdentityTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(function (t) { return t.getHandlerFunction() === 'crawlCloudIdentity'; })
+    .forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('crawlCloudIdentity').timeBased().everyDays(1).atHour(7).inTimezone(TIMEZONE).create();
+}
+
 /* ---------- Matrix ---------- */
 
 function keyOf_(parts) {
