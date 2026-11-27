@@ -64,9 +64,31 @@ function attachTooltip(btn, pop) {
   tooltips.add({ btn, pop, close });
 }
 
+/**
+ * Hiển thị: "Có..." → dấu tick xanh, "Không" → dấu x đỏ.
+ * Phần còn lại (dấu chú thích *, mô tả như "Microsoft (OIDC) only") giữ nguyên chữ.
+ * Chữ gốc vẫn có cho trình đọc màn hình. Các giá trị khác (số, Unlimited, N/A) không đổi.
+ */
+function appendValue(td, v) {
+  if (v === 'Không' || v.startsWith('Có')) {
+    const yes = v !== 'Không';
+    // Dấu chú thích (* † ‡) đã có ở nút chú thích bên cạnh, không lặp lại ở đây.
+    const rest = yes ? v.slice(2).replace(/[*†‡]+/g, '').trim() : '';
+    td.append(
+      el('span', { class: yes ? 'ico ico-yes' : 'ico ico-no', 'aria-hidden': 'true' }, [
+        document.createTextNode(yes ? '✓' : '✗')
+      ]),
+      el('span', { class: 'sr-only' }, [document.createTextNode(yes ? 'Có' : 'Không')])
+    );
+    if (rest) td.append(document.createTextNode(' ' + rest));
+    return;
+  }
+  td.append(document.createTextNode(v));
+}
+
 function valueCell(cell, edition) {
   const td = el('td', { class: valueClass(cell.v), 'data-edition': edition });
-  td.append(document.createTextNode(cell.v));
+  appendValue(td, cell.v);
 
   if (cell.notes.length) {
     const id = 'tip-' + ++tipCounter;
