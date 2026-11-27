@@ -19,7 +19,6 @@ Trigger → Apps Script → Google Sheet → Firestore → Web (Firebase Hosting
 |---|---|
 | GCP/Firebase project | `phienbangws` |
 | Firestore | `(default)`, Native, Standard, asia-southeast1 |
-| Sheet ID | `1myfyzK5eqYefs6y3vZEKONqxYlX1zQnWW6N-AXPMAAY` |
 | Apps Script ID | `1c31Dm3f3mZxx5DMJ36kpBodJMFEMGTpWbEEFKNtiokc6iwSIZhnxArNM` |
 | Nguồn | `https://knowledge.workspace.google.com/admin/getting-started/editions/compare-{business,enterprise,essentials,frontline}-editions?hl=en` |
 
