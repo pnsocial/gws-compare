@@ -28,7 +28,7 @@ export async function loadExtras() {
           notes: {},
           items: (s.items || []).map((it) => ({
             feature: it.feature,
-            links: [],
+            links: (it.links || []).map((l) => ({ text: String(l.text || l.url || ''), url: String(l.url || '') })),
             subitems: [],
             values: Object.fromEntries(Object.entries(it.values || {}).map(([ed, c]) => [nameOf(ed), { v: c.v, n: [] }]))
           }))
