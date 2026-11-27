@@ -8,6 +8,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Nhóm mở rộng (Cloud Identity, AI Expanded Access): public chỉ đọc, không ai ghi từ client.
+    match /extras/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Lịch sử thay đổi: chặn hoàn toàn từ client.
     match /changes/{id} {
       allow read, write: if false;

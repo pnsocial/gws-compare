@@ -3,7 +3,7 @@ import { loadCatalog } from './cache.js';
 import { flatten, filterRows, sortRows, sortSections, toCsv, FAMILY_LABELS, groupOf } from './model.js';
 import { renderTable } from './render.js';
 import { readUrl, writeUrl } from './url.js';
-import { demoExtras, DEMO_PRESETS } from './extras-demo.js';
+import { loadExtras } from './extras.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtDate = (d) => (d
@@ -113,7 +113,6 @@ function buildPresets() {
 /** Các edition của một nút nhanh. family rỗng = toàn bộ edition Google Workspace. */
 function presetNames(family) {
   if (!family) return defaultNames;
-  if (DEMO_PRESETS[family]) return DEMO_PRESETS[family];
   return editions.filter((e) => e.family === family).map((e) => e.name);
 }
 
@@ -220,14 +219,9 @@ async function init() {
   setStatus('Đang tải dữ liệu...');
   try {
     const data = await loadCatalog();
-    editions = data.editions;
-    let allSections = data.sections;
-    // Chỉ khi mở ?demo=extras: thêm dữ liệu giả để xem giao diện nhóm mở rộng.
-    if (new URLSearchParams(location.search).get('demo') === 'extras') {
-      const demo = demoExtras();
-      editions = editions.concat(demo.editions);
-      allSections = allSections.concat(demo.sections);
-    }
+    const extras = await loadExtras();
+    editions = data.editions.concat(extras.editions);
+    const allSections = data.sections.concat(extras.sections);
     const names = editions.map((e) => e.name);
     defaultNames = editions.filter((e) => !isExtra(e)).map((e) => e.name);
     state = readUrl(names, defaultNames);
