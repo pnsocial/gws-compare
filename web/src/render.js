@@ -114,7 +114,9 @@ function appendValue(td, v) {
 }
 
 function valueCell(cell, edition) {
-  const td = el('td', { class: valueClass(cell.v), 'data-edition': edition });
+  // N/A nhưng trang tính năng ghi là được hỗ trợ: đánh dấu nổi bật để khác ô N/A thường.
+  const pageYes = cell.v === 'N/A' && cell.notes.some((n) => n.mark === '†');
+  const td = el('td', { class: valueClass(cell.v) + (pageYes ? ' na-page' : ''), 'data-edition': edition });
   appendValue(td, cell.v);
 
   if (cell.notes.length) {

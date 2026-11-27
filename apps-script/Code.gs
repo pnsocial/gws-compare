@@ -74,9 +74,21 @@ function crawl() {
 
     const result = buildMatrix_(ss, raw);
     writeTable_(ss, 'raw', [RAW_HEADER].concat(raw));
+    const urls = [];
+    const seenUrls = new Set();
+    raw.forEach(function (r) {
+      if (r[7] && !seenUrls.has(r[7])) { seenUrls.add(r[7]); urls.push(r[7]); }
+    });
+    const pageMap = fetchPageEditions_(urls);
+    const pageRows = Array.from(pageMap, function (kv) {
+      return [kv[0], kv[1].editions ? kv[1].editions.join('; ') : '', kv[1].status];
+    });
+    writeTable_(ss, 'page_editions', [PAGE_EDITIONS_HEADER].concat(pageRows));
     saveMatrix_(ss, result);
-    const published = publishAfterSheet_(result.records, { checked: true });
-    return summary.join(', ') + '; khóa mới: ' + result.added.length + '; ' + published;
+    const published = publishAfterSheet_(result.records, { checked: true, pageEditions: pageMap });
+    const withLine = pageRows.filter(function (r) { return r[1]; }).length;
+    return summary.join(', ') + '; khóa mới: ' + result.added.length +
+      '; trang tính năng: ' + withLine + '/' + urls.length + ' có dòng hỗ trợ; ' + published;
   });
 }
 
@@ -97,7 +109,8 @@ function rebuild_(force) {
     const raw = sheet.getDataRange().getValues().slice(1);
     const result = buildMatrix_(ss, raw);
     saveMatrix_(ss, result);
-    const published = publishAfterSheet_(result.records, { checked: false, force: force });
+    const published = publishAfterSheet_(result.records,
+      { checked: false, force: force, pageEditions: getPageEditions_(ss) });
     return 'rebuild: ' + (result.matrix.length - 1) + ' dòng; ' + published;
   });
 }
@@ -247,6 +260,62 @@ function text_(html) {
     .trim();
 }
 
+/* ---------- Dòng "Supported editions" trên trang từng feature ---------- */
+
+const PAGE_EDITIONS_HEADER = ['url', 'editions', 'http_status'];
+const PAGE_BATCH = 50; // số trang tải song song mỗi lượt
+
+/** Các edition được nêu trong dòng "Supported editions for this feature" của trang. */
+function pageEditionsOf_(html) {
+  const m = text_(html).match(/Supported editions for this feature:(.{0,400}?)\.(?: |$)/);
+  if (!m) return [];
+  const names = FAMILIES.reduce(function (a, f) { return a.concat(f.editions); }, []);
+  return names.filter(function (name) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let re = '(?<![A-Za-z])' + esc + '(?![A-Za-z])';
+    if (name === 'Essentials') re = '(?<!Enterprise )' + re; // tránh khớp nhầm "Enterprise Essentials"
+    if (name === 'Enterprise Essentials') re += '(?! Plus)'; // tránh khớp nhầm "Enterprise Essentials Plus"
+    return new RegExp(re).test(m[1]);
+  });
+}
+
+/**
+ * Tải trang của từng URL theo lô song song. Trả về Map: url -> {editions, status}.
+ * Trang không tải được (status khác 200) có editions = null.
+ */
+function fetchPageEditions_(urls) {
+  const out = new Map();
+  for (let s = 0; s < urls.length; s += PAGE_BATCH) {
+    const chunk = urls.slice(s, s + PAGE_BATCH);
+    const responses = UrlFetchApp.fetchAll(chunk.map(function (u) {
+      return { url: u, headers: { 'Accept-Language': 'en' }, muteHttpExceptions: true };
+    }));
+    responses.forEach(function (res, j) {
+      const status = res.getResponseCode();
+      out.set(chunk[j], {
+        editions: status === 200 ? pageEditionsOf_(res.getContentText('UTF-8')) : null,
+        status: String(status)
+      });
+    });
+  }
+  return out;
+}
+
+/** Đọc lại kết quả lần crawl gần nhất từ tab page_editions (dùng cho rebuild, không tải lại). */
+function getPageEditions_(ss) {
+  const out = new Map();
+  const sheet = ss.getSheetByName('page_editions');
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getDataRange().getValues().slice(1).forEach(function (r) {
+    const status = String(r[2]);
+    out.set(String(r[0]), {
+      editions: status === '200' && r[1] ? String(r[1]).split('; ') : (status === '200' ? [] : null),
+      status: status
+    });
+  });
+  return out;
+}
+
 /* ---------- Matrix ---------- */
 
 function keyOf_(parts) {
@@ -394,7 +463,7 @@ function publishFirestore_(records, options) {
   const metaName = root + '/catalog/current';
   const sectionName = function (id) { return metaName + '/sections/' + id; };
 
-  const sections = buildSections_(records);
+  const sections = buildSections_(records, options.pageEditions || new Map());
   const metaDoc = fsRequest_(metaName, null, true);
   const old = metaDoc ? fromFields_(metaDoc.fields || {}) : null;
   const oldHashes = (old && old.hashes) || {};
@@ -454,7 +523,7 @@ function publishFirestore_(records, options) {
 }
 
 /** Gom theo section; chú thích lưu một lần mỗi document, ô giá trị chỉ giữ ID. */
-function buildSections_(records) {
+function buildSections_(records, pageMap) {
   const cache = new Map();
   const shortId = function (s) {
     if (!cache.has(s)) cache.set(s, hash_(s).slice(0, 16));
@@ -473,8 +542,11 @@ function buildSections_(records) {
         return id;
       }) };
     });
-    // Edition không có trong values nghĩa là N/A
-    doc.items.push({ id: shortId(r.id), feature: r.feature, links: r.links, subitems: r.subitems, values: values });
+    // Edition không có trong values nghĩa là N/A. pageEditions: edition trang tính năng ghi là được hỗ trợ.
+    const link = r.links.length ? r.links[0].url : '';
+    const page = link ? pageMap.get(link) : null;
+    doc.items.push({ id: shortId(r.id), feature: r.feature, links: r.links, subitems: r.subitems, values: values,
+      pageEditions: page && page.editions ? page.editions : [] });
   });
   return Array.from(bySection.values()).map(function (doc) {
     return { id: shortId(doc.title), doc: doc };
