@@ -316,6 +316,92 @@ function getPageEditions_(ss) {
   return out;
 }
 
+/* ---------- Cloud Identity: crawl riêng, không trộn với Workspace ---------- */
+
+const CI_URL = 'https://docs.cloud.google.com/identity/docs/editions';
+const CI_DOC_PATH = 'extras/cloudidentity'; // document Firestore riêng, không đụng catalog/current
+const CI_MIN_FEATURES = 60; // ngưỡng phát hiện trang đổi cấu trúc (hiện có 90)
+
+/** Crawl bảng so sánh Cloud Identity và ghi vào extras/cloudidentity. Chạy thủ công. */
+function crawlCloudIdentity() {
+  withLock_(function () {
+    const res = UrlFetchApp.fetch(CI_URL, { headers: { 'Accept-Language': 'en' }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error('Cloud Identity: HTTP ' + res.getResponseCode());
+    const parsed = parseCloudIdentity_(res.getContentText('UTF-8'));
+    if (parsed.featureCount < CI_MIN_FEATURES) {
+      throw new Error('Cloud Identity: chỉ có ' + parsed.featureCount + ' feature');
+    }
+    const root = 'projects/' + FIRESTORE_PROJECT + '/databases/' + FIRESTORE_DB + '/documents';
+    const doc = {
+      schemaVersion: SCHEMA_VERSION,
+      source: CI_URL,
+      checkedAt: new Date(),
+      editions: parsed.editions,
+      featureCount: parsed.featureCount,
+      sections: parsed.sections
+    };
+    fsRequest_(root + ':commit', { writes: [{ update: { name: root + '/' + CI_DOC_PATH, fields: fields_(doc) } }] });
+    return 'Cloud Identity: ' + parsed.sections.length + ' section, ' + parsed.featureCount +
+      ' feature, edition ' + parsed.editions.join(' / ') + '; giá trị: ' + parsed.valueSummary;
+  });
+}
+
+/** ✔ + dấu chú thích (* hoặc **) thành "Có*"; các giá trị khác bỏ dấu \\ thừa của trang. */
+function ciValue_(raw) {
+  if (raw.indexOf('✔') === 0) return 'Có' + raw.replace(/[✔\s\\]/g, '');
+  return raw.replace(/\\/g, '').trim();
+}
+
+/**
+ * Đọc các bảng "nice-table" của trang Cloud Identity. Tên section lấy từ tiêu đề h2/h3 gần nhất phía trên bảng.
+ * Ô ✔ được đổi thành "Có"; các giá trị khác giữ nguyên chữ.
+ */
+function parseCloudIdentity_(html) {
+  const tableRe = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
+  const headingRe = /<h([23])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
+  const sections = [];
+  const seenValues = new Map();
+  let editions = null;
+  let m;
+  while ((m = tableRe.exec(html)) !== null) {
+    const before = html.slice(0, m.index);
+    let title = 'Khác';
+    let h;
+    headingRe.lastIndex = 0;
+    while ((h = headingRe.exec(before)) !== null) title = text_(h[2]);
+
+    const rows = Array.from(m[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), function (r) {
+      return Array.from(r[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi), function (c) { return text_(c[1]); });
+    });
+    if (!rows.length) continue;
+    if (!editions) {
+      editions = rows[0].slice(1);
+      if (editions.length !== 2) throw new Error('Cloud Identity: bảng có ' + editions.length + ' edition, cần 2');
+    }
+
+    const items = [];
+    rows.slice(1).forEach(function (cells) {
+      if (cells.length === 1 || !cells[0]) return; // tiêu đề nhóm con
+      if (cells.length !== editions.length + 1) {
+        throw new Error('Cloud Identity: dòng sai cấu trúc "' + cells[0] + '"');
+      }
+      const values = {};
+      editions.forEach(function (ed, i) {
+        const v = ciValue_(cells[i + 1]);
+        seenValues.set(v, (seenValues.get(v) || 0) + 1);
+        values[ed] = { v: v, n: [] };
+      });
+      items.push({ feature: cells[0], values: values });
+    });
+    sections.push({ title: title, items: items });
+  }
+
+  const featureCount = sections.reduce(function (n, s) { return n + s.items.length; }, 0);
+  const valueSummary = Array.from(seenValues.keys()).filter(function (v) { return v !== 'Có'; })
+    .slice(0, 12).join(' | ') || '(chỉ có Có)';
+  return { editions: editions || [], sections: sections, featureCount: featureCount, valueSummary: valueSummary };
+}
+
 /* ---------- Matrix ---------- */
 
 function keyOf_(parts) {
