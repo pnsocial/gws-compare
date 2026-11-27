@@ -370,9 +370,9 @@ function parseCloudIdentity_(html) {
     headingRe.lastIndex = 0;
     while ((h = headingRe.exec(before)) !== null) title = text_(h[2]);
 
-    const rows = Array.from(m[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), function (r) {
-      return Array.from(r[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi), function (c) { return text_(c[1]); });
-    });
+    const trHtml = Array.from(m[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), function (r) { return r[1]; });
+    const rows = trHtml.map(function (r) { return cellHtmls_(r).map(text_); });
+    const firstHtml = trHtml.map(function (r) { return cellHtmls_(r)[0] || ''; });
     if (!rows.length) continue;
     if (!editions) {
       editions = rows[0].slice(1);
@@ -380,7 +380,7 @@ function parseCloudIdentity_(html) {
     }
 
     const items = [];
-    rows.slice(1).forEach(function (cells) {
+    rows.slice(1).forEach(function (cells, idx) {
       if (cells.length === 1 || !cells[0]) return; // tiêu đề nhóm con
       if (cells.length !== editions.length + 1) {
         throw new Error('Cloud Identity: dòng sai cấu trúc "' + cells[0] + '"');
@@ -391,7 +391,7 @@ function parseCloudIdentity_(html) {
         seenValues.set(v, (seenValues.get(v) || 0) + 1);
         values[ed] = { v: v, n: [] };
       });
-      items.push({ feature: cells[0], values: values });
+      items.push({ feature: cells[0], links: links_(firstHtml[idx + 1]), values: values });
     });
     sections.push({ title: title, items: items });
   }
@@ -432,6 +432,11 @@ function crawlAiExpandedAccess() {
   });
 }
 
+/** HTML bên trong từng ô của một hàng (không gộp colspan). */
+function cellHtmls_(rowHtml) {
+  return Array.from(rowHtml.matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi), function (c) { return c[1]; });
+}
+
 /**
  * Các ô của một hàng. Hàng chỉ có một ô (tên section) giữ nguyên một ô;
  * ô gộp cột trong hàng feature (colspan) được lặp lại đủ số cột.
@@ -456,16 +461,22 @@ function parseAiExpanded_(html) {
   const tableRe = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
   let m;
   let rows = null;
+  let firstHtml = [];
   while ((m = tableRe.exec(html)) !== null) {
-    const r = Array.from(m[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), function (x) { return aeCells_(x[1]); });
-    if (r.length && r[0].length === 4 && r[0][0] === '' ) { rows = r; break; }
+    const trHtml = Array.from(m[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), function (x) { return x[1]; });
+    const r = trHtml.map(aeCells_);
+    if (r.length && r[0].length === 4 && r[0][0] === '' ) {
+      rows = r;
+      firstHtml = trHtml.map(function (x) { return cellHtmls_(x)[0] || ''; });
+      break;
+    }
   }
   if (!rows) throw new Error('AI Expanded Access: không tìm thấy bảng so sánh');
 
   const editions = rows[0].slice(1);
   const sections = [];
   let current = null;
-  rows.slice(1).forEach(function (cells) {
+  rows.slice(1).forEach(function (cells, idx) {
     if (cells.length === 1) {
       if (!cells[0]) return;
       current = { title: cells[0], items: [] };
@@ -476,7 +487,7 @@ function parseAiExpanded_(html) {
     if (!current) { current = { title: 'Khác', items: [] }; sections.push(current); }
     const values = {};
     editions.forEach(function (ed, i) { values[ed] = { v: cells[i + 1], n: [] }; });
-    current.items.push({ feature: cells[0], values: values });
+    current.items.push({ feature: cells[0], links: links_(firstHtml[idx + 1]), values: values });
   });
   const featureCount = sections.reduce(function (n, s) { return n + s.items.length; }, 0);
   return { editions: editions, sections: sections, featureCount: featureCount };
