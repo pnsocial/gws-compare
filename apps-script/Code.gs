@@ -493,6 +493,17 @@ function createCloudIdentityTrigger() {
   ScriptApp.newTrigger('crawlCloudIdentity').timeBased().everyDays(1).atHour(7).inTimezone(TIMEZONE).create();
 }
 
+/**
+ * Bật lịch crawl AI Expanded Access hằng ngày lúc 8 giờ (sau Workspace lúc 6 giờ và Cloud Identity lúc 7 giờ).
+ * Chỉ thay lịch của crawlAiExpandedAccess.
+ */
+function createAiExpandedTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(function (t) { return t.getHandlerFunction() === 'crawlAiExpandedAccess'; })
+    .forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('crawlAiExpandedAccess').timeBased().everyDays(1).atHour(8).inTimezone(TIMEZONE).create();
+}
+
 /* ---------- Matrix ---------- */
 
 function keyOf_(parts) {
