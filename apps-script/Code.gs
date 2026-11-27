@@ -340,7 +340,7 @@ function crawlCloudIdentity() {
       featureCount: parsed.featureCount,
       sections: parsed.sections
     };
-    fsRequest_(root + ':commit', { writes: [{ update: { name: root + '/' + CI_DOC_PATH, fields: fields_(doc) } }] });
+    commitExtras_(root, 'cloudidentity', CI_DOC_PATH, doc);
     return 'Cloud Identity: ' + parsed.sections.length + ' section, ' + parsed.featureCount +
       ' feature, edition ' + parsed.editions.join(' / ') + '; giá trị: ' + parsed.valueSummary;
   });
@@ -426,7 +426,7 @@ function crawlAiExpandedAccess() {
       featureCount: parsed.featureCount,
       sections: parsed.sections
     };
-    fsRequest_(root + ':commit', { writes: [{ update: { name: root + '/' + AE_DOC_PATH, fields: fields_(doc) } }] });
+    commitExtras_(root, 'aiexpanded', AE_DOC_PATH, doc);
     return 'AI Expanded Access: ' + parsed.sections.length + ' section, ' + parsed.featureCount +
       ' feature, cột ' + parsed.editions.join(' / ');
   });
@@ -714,7 +714,8 @@ function publishFirestore_(records, options) {
     changedAt: !dirty && old && old.changedAt ? new Date(old.changedAt) : now,
     featureCount: records.length,
     editions: editions,
-    hashes: hashes
+    hashes: hashes,
+    extrasHashes: (old && old.extrasHashes) || {}
   }) } });
 
   fsRequest_(root + ':commit', { writes: writes });
@@ -774,6 +775,25 @@ function changes_(oldDocs, newDocs, allSections) {
     if (!all.has(id)) result.removed.push(v.label);
   });
   return result;
+}
+
+/**
+ * Ghi doc của nhóm mở rộng và cập nhật extrasHashes.<id> trong catalog/current, để web
+ * chỉ tải lại khi nội dung đổi. Hash chỉ tính editions và sections (không tính checkedAt).
+ * Chỉ patch đúng một trường (updateMask), không ghi đè meta. Nếu meta chưa có thì bỏ qua,
+ * web sẽ tải nhóm đó trực tiếp.
+ */
+function commitExtras_(root, id, docPath, doc) {
+  const writes = [{ update: { name: root + '/' + docPath, fields: fields_(doc) } }];
+  if (fsRequest_(root + '/catalog/current', null, true)) {
+    const patch = {};
+    patch[id] = hash_(stable_([SCHEMA_VERSION, doc.editions, doc.sections]));
+    writes.push({
+      update: { name: root + '/catalog/current', fields: fields_({ extrasHashes: patch }) },
+      updateMask: { fieldPaths: ['extrasHashes.' + id] }
+    });
+  }
+  fsRequest_(root + ':commit', { writes: writes });
 }
 
 function fsRequest_(path, body, allowMissing) {

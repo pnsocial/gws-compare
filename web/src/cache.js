@@ -63,6 +63,7 @@ export async function loadCatalog() {
   return {
     editions: meta.editions || [],
     featureCount: meta.featureCount || 0,
+    extrasHashes: meta.extrasHashes || {},
     checkedAt: toDate(meta.checkedAt),
     changedAt: toDate(meta.changedAt),
     sections
