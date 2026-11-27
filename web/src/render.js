@@ -24,6 +24,12 @@ function valueClass(v) {
 // Các chú thích đang có trên bảng. Một bộ lắng nghe chung đóng chúng khi chạm/bấm ra ngoài.
 const tooltips = new Set();
 
+/** Gỡ mọi chú thích đang nằm trên body (khi bảng được vẽ lại). */
+function clearTooltips() {
+  for (const t of tooltips) t.pop.remove();
+  tooltips.clear();
+}
+
 function closeOutside(target) {
   for (const t of tooltips) {
     if (t.pop.hidden) continue;
@@ -33,6 +39,7 @@ function closeOutside(target) {
 }
 
 document.addEventListener('pointerdown', (e) => closeOutside(e.target));
+document.addEventListener('scroll', () => { for (const t of tooltips) t.close(); }, { capture: true, passive: true });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   for (const t of tooltips) t.close();
@@ -44,9 +51,29 @@ document.addEventListener('keydown', (e) => {
  * - Chạm hoặc click: bật/tắt và ghim. Chạm/bấm ra ngoài hoặc Escape thì đóng.
  * Hover chỉ áp dụng cho chuột để chạm trên điện thoại không bị hiện lại sau khi đóng.
  */
+/**
+ * Đặt chú thích cố định trên màn hình, cạnh nút bấm, để không bị cắt bởi bảng cuộn
+ * hay bị các ô bên cạnh che (đặc biệt trên điện thoại).
+ */
+function placeTooltip(btn, pop) {
+  if (pop.parentElement !== document.body) document.body.append(pop);
+  const r = btn.getBoundingClientRect();
+  const pw = pop.offsetWidth;
+  const ph = pop.offsetHeight;
+  let top = r.bottom + 6;
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+  const left = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8);
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+}
+
 function attachTooltip(btn, pop) {
   let pinned = false;
-  const show = () => { pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
+  const show = () => {
+    pop.hidden = false;
+    placeTooltip(btn, pop);
+    btn.setAttribute('aria-expanded', 'true');
+  };
   const hide = () => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
   const close = () => { pinned = false; hide(); };
 
@@ -107,7 +134,7 @@ function valueCell(cell, edition) {
       pop.append(line);
     });
     attachTooltip(btn, pop);
-    td.append(btn, pop);
+    td.append(btn);
   }
   return td;
 }
@@ -128,7 +155,7 @@ function sortableHeader(label, key, sort, onSort) {
  * sort: { key, dir } hoặc null. onSort(key): gọi khi người dùng bấm tiêu đề.
  */
 export function renderTable(table, rows, editions, sort, onSort) {
-  tooltips.clear(); // các ô cũ bị thay thế, không còn cần theo dõi
+  clearTooltips(); // các ô cũ bị thay thế, gỡ chú thích cũ
   const head = el('tr', {}, [
     sortableHeader('Section', 'section', sort, onSort),
     sortableHeader('Feature', 'feature', sort, onSort),
