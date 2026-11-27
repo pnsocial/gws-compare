@@ -219,7 +219,7 @@ async function init() {
   setStatus('Đang tải dữ liệu...');
   try {
     const data = await loadCatalog();
-    const extras = await loadExtras();
+    const extras = await loadExtras(data.extrasHashes);
     editions = data.editions.concat(extras.editions);
     const allSections = data.sections.concat(extras.sections);
     const names = editions.map((e) => e.name);
