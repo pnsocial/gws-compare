@@ -1,4 +1,4 @@
-import { cellOf } from './model.js';
+import { cellOf, groupOf } from './model.js';
 
 // Mọi nội dung đưa vào DOM đều qua textContent. Không dùng innerHTML với dữ liệu.
 
@@ -113,10 +113,12 @@ function appendValue(td, v) {
   td.append(document.createTextNode(v));
 }
 
-function valueCell(cell, edition) {
+function valueCell(cell, edition, family) {
   // N/A nhưng trang tính năng ghi là được hỗ trợ: đánh dấu nổi bật để khác ô N/A thường.
   const pageYes = cell.v === 'N/A' && cell.notes.some((n) => n.mark === '†');
-  const td = el('td', { class: valueClass(cell.v) + (pageYes ? ' na-page' : ''), 'data-edition': edition });
+  // Nhóm mở rộng (ngoài Workspace) không tô nền xanh cho ô có tick.
+  const cls = groupOf(family) !== 'workspace' && valueClass(cell.v) === 'co' ? 'text' : valueClass(cell.v);
+  const td = el('td', { class: cls + (pageYes ? ' na-page' : ''), 'data-edition': edition });
   appendValue(td, cell.v);
 
   if (cell.notes.length) {
@@ -212,7 +214,7 @@ export function renderTable(table, rows, editions, sort, onSort) {
     const tr = el('tr', {}, [
       el('td', { class: 'section' }, [document.createTextNode(r.section)]),
       featureCell,
-      ...editions.map((e) => valueCell(cellOf(r, e.name), e.name))
+      ...editions.map((e) => valueCell(cellOf(r, e.name), e.name, r.family))
     ]);
     body.append(tr);
   }
