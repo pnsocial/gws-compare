@@ -161,7 +161,7 @@ export function renderTable(table, rows, editions, sort, onSort) {
   const head = el('tr', {}, [
     sortableHeader('Section', 'section', sort, onSort),
     sortableHeader('Feature', 'feature', sort, onSort),
-    ...editions.map((e) => sortableHeader(e.name, e.name, sort, onSort))
+    ...editions.map((e) => sortableHeader(e.label || e.name, e.name, sort, onSort))
   ]);
   const body = el('tbody');
 
